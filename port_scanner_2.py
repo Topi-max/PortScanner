@@ -1,15 +1,17 @@
 import socket
-import threading
+import time
+from concurrent.futures import ThreadPoolExecutor
 
 # Funktio, joka tarkistaa, onko portti auki
 def scan_port(target, port):
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.settimeout(1)
+        s.settimeout(2)  # Pidennetään timeoutia
         result = s.connect_ex((target, port))
         if result == 0:
             print(f"[+] Portti {port} on AUKI")
         s.close()
+        time.sleep(0.1)  # Pieni viive palvelimen ylikuormituksen välttämiseksi
     except:
         pass
 
@@ -27,15 +29,9 @@ else:
 
 print(f"Skannataan {target} {len(ports)} porttia...\n")
 
-# Käynnistetään säikeet nopeuttamaan skannausta
-threads = []
-for port in ports:
-    thread = threading.Thread(target=scan_port, args=(target, port))
-    threads.append(thread)
-    thread.start()
-
-# Odotetaan kaikkien säikeiden valmistumista
-for thread in threads:
-    thread.join()
+# Käytetään säikeitä nopeuttamaan skannausta mutta rajoitetaan määrää
+with ThreadPoolExecutor(max_workers=100) as executor:
+    executor.map(lambda port: scan_port(target, port), ports)
 
 print("\nSkannaus valmis!")
+
